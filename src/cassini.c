@@ -1,4 +1,5 @@
 #include "cassini.h"
+#include "stdint.h"
 
 const char usage_info[] = "\
    usage: cassini [OPTIONS] -l -> list all tasks\n\
@@ -86,7 +87,7 @@ int main(int argc, char * argv[]) {
   }
 
   // --------
-  // | TODO |
+  // | TODO | //Ouvrir le pipe en ecriture avec un open(), et en fonction des arguments - il faut formater une requete a envoyer au demon par un pipe(ecrire dans le fichier pipe /saturnd-request) et lire la reponse du demon envoyé par saturnd-reply.
   // --------
   
   return EXIT_SUCCESS;
