@@ -1,6 +1,5 @@
 #include "cassini.h"
 #include "stdint.h"
-#include <endian.h>
 
 const char usage_info[] = "\
    usage: cassini [OPTIONS] -l -> list all tasks\n\
@@ -92,7 +91,7 @@ int main(int argc, char * argv[]) {
   // --------
   // We first open the pipe in write only mode
   int fd;
-  fd = open("run/pipes/saturnd-request-pipe", O_WRONLY);//we open our file descriptor
+  fd = open("./run/pipes/saturnd-request-pipe", O_WRONLY);//we open our file descriptor
   if (fd == -1){
     goto error;
   }
