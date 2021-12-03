@@ -1,6 +1,6 @@
 #include "cassini.h"
 #include "stdint.h"
-
+#include <endian.h>
 
 const char usage_info[] = "\
    usage: cassini [OPTIONS] -l -> list all tasks\n\
@@ -97,19 +97,13 @@ int main(int argc, char * argv[]) {
       goto error;
     }
 
-    //for each command, we send two bytes representing the two chars to our client pipe
-    uint8_t first_byte;
-    uint8_t second_byte;
-
     switch(operation){
       case CLIENT_REQUEST_CREATE_TASK:
-        
+
         break;
-      default:
-        first_byte = (uint8_t) (((int) operation >> (0*8)) & 0xFF);
-        second_byte = (uint8_t) (((int) operation >> (1*8)) & 0xFF);
-        write(fd,&second_byte,sizeof(uint8_t));
-        write(fd,&first_byte,sizeof(uint8_t));
+      default:;
+        uint16_t res = htobe16(operation);
+        write(fd,&res,sizeof(uint16_t));
         break;
     }
     close(fd);
