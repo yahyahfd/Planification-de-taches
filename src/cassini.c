@@ -90,23 +90,23 @@ int main(int argc, char * argv[]) {
   // --------
   // | TODO |
   // --------
-    // We first open the pipe in write only mode
-    int fd;
-    fd = open("run/pipes/saturnd-request-pipe", O_WRONLY);
-    if (fd == -1){
-      goto error;
-    }
-
-    switch(operation){
-      case CLIENT_REQUEST_CREATE_TASK:
-
-        break;
-      default:;
-        uint16_t res = htobe16(operation);
-        write(fd,&res,sizeof(uint16_t));
-        break;
-    }
-    close(fd);
+  // We first open the pipe in write only mode
+  int fd;
+  fd = open("run/pipes/saturnd-request-pipe", O_WRONLY);//we open our file descriptor
+  if (fd == -1){
+    goto error;
+  }
+  // we then convert our operation to big endian if needed
+  uint16_t new_opr = htobe16(operation);
+  //then we start a switch to send to our client a request according to the operation specified
+  switch(operation){
+    case CLIENT_REQUEST_CREATE_TASK:
+      break;
+    default:// ls for now is default
+      write(fd,&new_opr,sizeof(uint16_t));
+      break;
+  }
+  close(fd);//we close our file descriptor
   return EXIT_SUCCESS;
 
  error:
