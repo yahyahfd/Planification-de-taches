@@ -22,15 +22,15 @@ const char usage_info[] = "\
 
 int main(int argc, char * argv[]) {
   errno = 0;
-  
+
   char * minutes_str = "*";
   char * hours_str = "*";
   char * daysofweek_str = "*";
   char * pipes_directory = NULL;
-  
+
   uint16_t operation = CLIENT_REQUEST_LIST_TASKS;
   uint64_t taskid;
-  
+
   int opt;
   char * strtoull_endp;
   while ((opt = getopt(argc, argv, "hlcqm:H:d:p:r:x:o:e:")) != -1) {
@@ -87,9 +87,25 @@ int main(int argc, char * argv[]) {
   }
 
   // --------
-  // | TODO | //Ouvrir le pipe en ecriture avec un open(), et en fonction des arguments - il faut formater une requete a envoyer au demon par un pipe(ecrire dans le fichier pipe /saturnd-request) et lire la reponse du demon envoyé par saturnd-reply.
+  // | TODO |
   // --------
-  
+  // We first open the pipe in write only mode
+  int fd;
+  fd = open("./run/pipes/saturnd-request-pipe", O_WRONLY);//we open our file descriptor
+  if (fd == -1){
+    goto error;
+  }
+  // we then convert our operation to big endian if needed
+  uint16_t new_opr = htobe16(operation);
+  //then we start a switch to send to our client a request according to the operation specified
+  switch(operation){
+    case CLIENT_REQUEST_CREATE_TASK:
+      break;
+    default:// ls for now is default
+      write(fd,&new_opr,sizeof(uint16_t));
+      break;
+  }
+  close(fd);//we close our file descriptor
   return EXIT_SUCCESS;
 
  error:
@@ -98,4 +114,3 @@ int main(int argc, char * argv[]) {
   pipes_directory = NULL;
   return EXIT_FAILURE;
 }
-
