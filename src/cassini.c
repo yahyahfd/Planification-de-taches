@@ -1,6 +1,7 @@
 #include "cassini.h"
 #include "stdint.h"
 
+
 const char usage_info[] = "\
    usage: cassini [OPTIONS] -l -> list all tasks\n\
       or: cassini [OPTIONS]    -> same\n\
@@ -22,15 +23,15 @@ const char usage_info[] = "\
 
 int main(int argc, char * argv[]) {
   errno = 0;
-  
+
   char * minutes_str = "*";
   char * hours_str = "*";
   char * daysofweek_str = "*";
   char * pipes_directory = NULL;
-  
+
   uint16_t operation = CLIENT_REQUEST_LIST_TASKS;
   uint64_t taskid;
-  
+
   int opt;
   char * strtoull_endp;
   while ((opt = getopt(argc, argv, "hlcqm:H:d:p:r:x:o:e:")) != -1) {
@@ -87,9 +88,31 @@ int main(int argc, char * argv[]) {
   }
 
   // --------
-  // | TODO | //Ouvrir le pipe en ecriture avec un open(), et en fonction des arguments - il faut formater une requete a envoyer au demon par un pipe(ecrire dans le fichier pipe /saturnd-request) et lire la reponse du demon envoyé par saturnd-reply.
+  // | TODO |
   // --------
-  
+    // We first open the pipe in write only mode
+    int fd;
+    fd = open("run/pipes/saturnd-request-pipe", O_WRONLY);
+    if (fd == -1){
+      goto error;
+    }
+
+    //for each command, we send two bytes representing the two chars to our client pipe
+    uint8_t first_byte;
+    uint8_t second_byte;
+
+    switch(operation){
+      case CLIENT_REQUEST_CREATE_TASK:
+        
+        break;
+      default:
+        first_byte = (uint8_t) (((int) operation >> (0*8)) & 0xFF);
+        second_byte = (uint8_t) (((int) operation >> (1*8)) & 0xFF);
+        write(fd,&second_byte,sizeof(uint8_t));
+        write(fd,&first_byte,sizeof(uint8_t));
+        break;
+    }
+    close(fd);
   return EXIT_SUCCESS;
 
  error:
@@ -98,4 +121,3 @@ int main(int argc, char * argv[]) {
   pipes_directory = NULL;
   return EXIT_FAILURE;
 }
-
