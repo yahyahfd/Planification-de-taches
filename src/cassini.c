@@ -97,9 +97,14 @@ int main(int argc, char * argv[]) {
   }
   // we then convert our operation to big endian if needed
   uint16_t new_opr = htobe16(operation);
+  uint64_t new_id = htobe64(taskid);
   //then we start a switch to send to our client a request according to the operation specified
   switch(operation){
     case CLIENT_REQUEST_CREATE_TASK:
+      break;
+    case CLIENT_REQUEST_GET_STDERR:
+      write(fd,&new_opr,sizeof(uint16_t));
+      write(fd,&new_id,sizeof(uint64_t));
       break;
     default:// ls for now is default
       write(fd,&new_opr,sizeof(uint16_t));
