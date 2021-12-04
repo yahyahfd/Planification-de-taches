@@ -101,6 +101,9 @@ int main(int argc, char * argv[]) {
   switch(operation){
     case CLIENT_REQUEST_CREATE_TASK:
       break;
+    case CLIENT_REQUEST_TERMINATE://Terminate just like List takes an unsigned integer of 2 octets previously converted to big endian
+      write(fd,&new_opr,sizeof(uint16_t));
+      break;
     default:// ls for now is default
       write(fd,&new_opr,sizeof(uint16_t));
       break;
