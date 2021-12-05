@@ -117,6 +117,11 @@ int main(int argc, char * argv[]) {
   }
   int nb;
   char buf[1025];
+  char buf2[1025];
+  uint64_t buffer8;
+  uint32_t buffer4;
+  uint16_t buffer2;
+  uint8_t buffer1;
   // we then convert our operation to big endian if needed
   uint16_t new_opr = htobe16(operation);
   uint64_t new_task = htobe64(taskid);
@@ -133,14 +138,24 @@ int main(int argc, char * argv[]) {
       write(fd1,&t.hours,sizeof(uint32_t));
       write(fd1,&t.daysofweek,sizeof(uint8_t));
       //commandline
-      uint32_t new_argc = htobe32(argc-4);
-      write(fd1,&new_argc,sizeof(uint32_t));
+      int count=4; //counting how many args our commandline has
       for(int i=4;i<argc;i++){
+        if(argv[i][0]=='-'){//we skip options (and their single argument:minutes,hours,days)
+          count+=2;
+        }
+      }
+      uint32_t new_argc = htobe32(argc-count); //our new final argc count
+      write(fd1,&new_argc,sizeof(uint32_t));
+      for(int i=count;i<argc;i++){
         int size_l = strlen(argv[i]);
         uint32_t size_l2 = htobe32(size_l);
         write(fd1,&size_l2,sizeof(uint32_t));
         write(fd1,argv[i],size_l);
-      };
+      }
+      //reply responde on stdout
+      nb = read(fd2,&buffer2,2);
+      nb = read(fd2,&buffer8,8);
+      printf("%ld\n", be64toh(buffer8));
       break;
     case CLIENT_REQUEST_TERMINATE://Terminate just like List takes an unsigned integer of 16 bytes previously converted to big endian
       write(fd1,&new_opr,sizeof(uint16_t));
