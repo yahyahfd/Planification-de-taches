@@ -86,6 +86,24 @@ int main(int argc, char * argv[]) {
     }
   }
 
+  // TESTS
+  // TEST 1 : -l
+  // TEST 2 : -c echo test-1
+  // TEST 3 : -l
+  // TEST 4 : -c echo test-2
+  // TEST 5 : -c -m 1 -H 2 -d * date
+  // TEST 6 : -c -H 1,3,5,7 -m 1 date
+  // TEST 7 : -c -d 1,3 -m 4,10 ls NONEXISTENT_FILE
+  // TEST 8 : -l
+  // TEST 9 : -r 2
+  // TEST 10 : -c -m 1,3-6,9-15 date
+  // TEST 11 : -x 0
+  // TEST 12 : -o 0
+  // TEST 13 : -e 4
+  // TEST 14 : -x 60
+  // TEST 15 : -o 3
+  // TEST 16 : -q
+
   // --------
   // | TODO |
   // --------
@@ -97,15 +115,47 @@ int main(int argc, char * argv[]) {
   }
   // we then convert our operation to big endian if needed
   uint16_t new_opr = htobe16(operation);
+  uint64_t new_task = htobe64(taskid);
   //then we start a switch to send to our client a request according to the operation specified
   switch(operation){
     case CLIENT_REQUEST_CREATE_TASK:
+      break;
+    case CLIENT_REQUEST_TERMINATE://Terminate just like List takes an unsigned integer of 16 bytes previously converted to big endian
+      write(fd,&new_opr,sizeof(uint16_t));
+      break;
+    case CLIENT_REQUEST_GET_STDOUT:
+      write(fd,&new_opr,sizeof(uint16_t)); 
+      write(fd,&new_task,sizeof(uint64_t)); 
+      break;
+    case CLIENT_REQUEST_REMOVE_TASK:
+      write(fd,&new_opr,sizeof(uint16_t)); 
+      write(fd,&new_task,sizeof(uint64_t)); 
       break;
     default:// ls for now is default
       write(fd,&new_opr,sizeof(uint16_t));
       break;
   }
   close(fd);//we close our file descriptor
+
+  int rep = open("./run/pipes/saturnd-reply-pipe", O_RDONLY);
+  char buf[1025];
+  int n;
+  if(rep == -1){
+  	goto error;
+  }
+  if(operation == CLIENT_REQUEST_GET_STDOUT){
+  	if((n = read(rep, buf,1024)) >= 0){
+  		buf[n] = 0;
+  		printf("%s",buf+6);
+  	} else{
+  		goto error;
+  	}
+  	if(buf[0] == 'E'){
+  		exit(1);
+  	}
+  }
+
+
   return EXIT_SUCCESS;
 
  error:
