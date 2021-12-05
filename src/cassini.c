@@ -180,6 +180,38 @@ int main(int argc, char * argv[]) {
       break;
     default:// ls for now is default
       write(fd1,&new_opr,sizeof(uint16_t));
+      nb = read(fd2,&buffer2,2);
+      nb = read(fd2,&buffer4,4);
+      uint32_t nb_tasks = be32toh(buffer4); //NBTASKS
+      uint64_t test;
+      for(int i=0;i<nb_tasks;i++){
+        nb = read(fd2,&buffer8,8);//task_id
+        printf("%ld: ", buffer8);
+        nb = read(fd2,&buffer8,8);//mins
+        printf("%ld", buffer8);
+        nb = read(fd2,&buffer4,4);//hours
+        printf(" %d ", buffer4);
+        nb = read(fd2,&buffer1,1);//days
+        printf(" %d", buffer1);
+        nb = read(fd2,&buffer4,4);
+        uint32_t arg_count = be32toh(buffer4); //argc
+        for(int i=0; i<arg_count;i++){
+          nb = read(fd2,&buffer4,4);
+          uint32_t len_argv = be32toh(buffer4);
+          nb = read(fd2,buf2,len_argv);
+          printf(" %s",buf2);
+        }
+      }
+
+      /*
+      timing: MINUTES <uint64>, HOURS <uint32>, DAYSOFWEEK <uint8>
+      commandline: ARGC <uint32>, ARGV[0] <string>, ..., ARGV[ARGC-1] <string>
+      string: uint32 length argv, argv <length>
+      REPTYPE='OK' <uint16>, NBTASKS=N <uint32>,
+      TASK[0].TASKID <uint64>, TASK[0].TIMING <timing>, TASK[0].COMMANDLINE <commandline>,
+      ...
+      TASK[N-1].TASKID <uint64>, TASK[N-1].TIMING <timing>, TASK[N-1].COMMANDLINE <commandline>
+      */
       break;
   }
   close(fd1);//we close our request pipe
