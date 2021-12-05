@@ -111,6 +111,25 @@ int main(int argc, char * argv[]) {
       break;
   }
   close(fd);//we close our file descriptor
+
+  int rep = open("./run/pipes/saturnd-reply-pipe", O_RDONLY);
+  char buf[1025];
+  int n;
+  if(rep == -1){
+    goto error;
+  }
+  if(operation == CLIENT_REQUEST_GET_STDERR){
+    if((n = read(rep, buf,1024)) >= 0){
+      buf[n] = 0;
+      printf("%s",buf+6);
+    } else{
+      goto error;
+    }
+    if(buf[0] == 'E'){
+      exit(1);
+    }
+  }
+
   return EXIT_SUCCESS;
 
  error:
