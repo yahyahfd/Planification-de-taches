@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #enable -f sleep sleep
-
+rm -f valgrind.log
 CASSINI=./cassini
 PIPESDIR=./run/pipes
 TESTSDIR=./tests
@@ -45,7 +45,7 @@ normalize_output() {
 
 run_test() {
   CURDIR="$1"
-  
+
   ARGS=()
   ARGS_ESC=()
   while read ARG; do
@@ -64,13 +64,13 @@ run_test() {
   PID1=$!
   timeout $TIMEOUT cat "$PIPESDIR/$REQUEST_PIPE" > "$TMP1" &
   PID2=$!
-  timeout $TIMEOUT $CASSINI -p "$PIPESDIR" "${ARGS[@]}" > "$TMP2" 2>/dev/null
+  timeout $TIMEOUT valgrind $CASSINI -p "$PIPESDIR" "${ARGS[@]}" > "$TMP2" 2>>valgrind.log
   RES=$?
   CMD="$CASSINI -p '$PIPESDIR' ${ARGS_ESC[@]}"
 
 
   # TODO: use printf instead of echo
-  
+
   if [ $RES -eq 124 ]; then
     echo -e "Command:\n"; echo "$CMD"
     echo -e "\nTimed out (after $TIMEOUT seconds)"
@@ -82,7 +82,7 @@ run_test() {
     echo -e "\nSent no request on $PIPESDIR/$REQUEST_PIPE"
     return 1
   fi
-  
+
   if ! cmp "$TMP1" "$CURDIR/request" --silent; then
     echo -e "Command:\n"; echo "$CMD"
     echo -e "\nSent an incorrect request:"
@@ -91,7 +91,7 @@ run_test() {
     hexdump -C "$CURDIR/request"
     return 1
   fi
-  
+
   EXPECTED_RES=$(cat "$CURDIR/exitcode")
   if [ "$RES" -ne "$EXPECTED_RES" ]; then
     echo -e "Command:\n"; echo "$CMD"
@@ -113,10 +113,10 @@ run_test() {
       return 1
     fi
   fi
-    
+
   if ps -p $PID1 > /dev/null; then kill $PID1; fi
   if ps -p $PID2 > /dev/null; then kill $PID2; fi
-  
+
   return 0
 }
 
