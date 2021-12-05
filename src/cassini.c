@@ -108,7 +108,6 @@ int main(int argc, char * argv[]) {
   // | TODO |
   // --------
   // We first open the pipe in write only mode
-  int fd;
   int fd1,fd2;
   fd1 = open("./run/pipes/saturnd-request-pipe", O_WRONLY);//we open our request pipe in write only mode
   fd2 = open("./run/pipes/saturnd-reply-pipe", O_RDONLY);//we open our reply pipe in read only mode
@@ -177,6 +176,20 @@ int main(int argc, char * argv[]) {
     case CLIENT_REQUEST_REMOVE_TASK:
       write(fd1,&new_opr,sizeof(uint16_t));
       write(fd1,&new_task,sizeof(uint64_t));
+      break;
+    case CLIENT_REQUEST_GET_STDERR:
+      write(fd1,&new_opr,sizeof(uint16_t));
+      write(fd1,&new_task,sizeof(uint64_t));
+      if((nb = read(fd2, buf,1024)) >= 0){
+    		buf[nb] = 0;
+    		printf("%s",buf+6);
+    	} else{
+        close(fd2);
+    		goto error;
+    	}
+    	if(buf[0] == 'E'){
+    		exit(1);
+    	}
       break;
     default:// ls for now is default
       write(fd1,&new_opr,sizeof(uint16_t));
