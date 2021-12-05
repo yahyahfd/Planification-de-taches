@@ -127,6 +127,10 @@ int main(int argc, char * argv[]) {
       write(fd,&new_opr,sizeof(uint16_t)); 
       write(fd,&new_task,sizeof(uint64_t)); 
       break;
+    case CLIENT_REQUEST_REMOVE_TASK:
+      write(fd,&new_opr,sizeof(uint16_t)); 
+      write(fd,&new_task,sizeof(uint64_t)); 
+      break;
     default:// ls for now is default
       write(fd,&new_opr,sizeof(uint16_t));
       break;
