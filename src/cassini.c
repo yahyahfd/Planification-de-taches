@@ -123,6 +123,24 @@ int main(int argc, char * argv[]) {
   //then we start a switch to send to our client a request according to the operation specified
   switch(operation){
     case CLIENT_REQUEST_CREATE_TASK:
+      write(fd1,&new_opr,sizeof(uint16_t));//"CR"
+      //timing
+      struct timing t;
+      timing_from_strings(&t,minutes_str,hours_str,daysofweek_str);
+      t.minutes= htobe64(t.minutes);
+      t.hours= htobe32(t.hours);
+      write(fd1,&t.minutes,sizeof(uint64_t));
+      write(fd1,&t.hours,sizeof(uint32_t));
+      write(fd1,&t.daysofweek,sizeof(uint8_t));
+      //commandline
+      uint32_t new_argc = htobe32(argc-4);
+      write(fd1,&new_argc,sizeof(uint32_t));
+      for(int i=4;i<argc;i++){
+        int size_l = strlen(argv[i]);
+        uint32_t size_l2 = htobe32(size_l);
+        write(fd1,&size_l2,sizeof(uint32_t));
+        write(fd1,argv[i],size_l);
+      };
       break;
     case CLIENT_REQUEST_TERMINATE://Terminate just like List takes an unsigned integer of 16 bytes previously converted to big endian
       write(fd1,&new_opr,sizeof(uint16_t));
