@@ -109,10 +109,14 @@ int main(int argc, char * argv[]) {
   // --------
   // We first open the pipe in write only mode
   int fd;
-  fd = open("./run/pipes/saturnd-request-pipe", O_WRONLY);//we open our file descriptor
-  if (fd == -1){
+  int fd1,fd2;
+  fd1 = open("./run/pipes/saturnd-request-pipe", O_WRONLY);//we open our request pipe in write only mode
+  fd2 = open("./run/pipes/saturnd-reply-pipe", O_RDONLY);//we open our reply pipe in read only mode
+  if (fd1 < 0 || fd2 < 0){
     goto error;
   }
+  int nb;
+  char buf[1025];
   // we then convert our operation to big endian if needed
   uint16_t new_opr = htobe16(operation);
   uint64_t new_task = htobe64(taskid);
@@ -121,41 +125,32 @@ int main(int argc, char * argv[]) {
     case CLIENT_REQUEST_CREATE_TASK:
       break;
     case CLIENT_REQUEST_TERMINATE://Terminate just like List takes an unsigned integer of 16 bytes previously converted to big endian
-      write(fd,&new_opr,sizeof(uint16_t));
+      write(fd1,&new_opr,sizeof(uint16_t));
       break;
     case CLIENT_REQUEST_GET_STDOUT:
-      write(fd,&new_opr,sizeof(uint16_t)); 
-      write(fd,&new_task,sizeof(uint64_t)); 
+      write(fd1,&new_opr,sizeof(uint16_t));
+      write(fd1,&new_task,sizeof(uint64_t));
+      if((nb = read(fd2, buf,1024)) >= 0){
+    		buf[nb] = 0;
+    		printf("%s",buf+6);
+    	} else{
+        close(fd2);
+    		goto error;
+    	}
+    	if(buf[0] == 'E'){
+    		exit(1);
+    	}
       break;
     case CLIENT_REQUEST_REMOVE_TASK:
-      write(fd,&new_opr,sizeof(uint16_t)); 
-      write(fd,&new_task,sizeof(uint64_t)); 
+      write(fd1,&new_opr,sizeof(uint16_t));
+      write(fd1,&new_task,sizeof(uint64_t));
       break;
     default:// ls for now is default
-      write(fd,&new_opr,sizeof(uint16_t));
+      write(fd1,&new_opr,sizeof(uint16_t));
       break;
   }
-  close(fd);//we close our file descriptor
-
-  int rep = open("./run/pipes/saturnd-reply-pipe", O_RDONLY);
-  char buf[1025];
-  int n;
-  if(rep == -1){
-  	goto error;
-  }
-  if(operation == CLIENT_REQUEST_GET_STDOUT){
-  	if((n = read(rep, buf,1024)) >= 0){
-  		buf[n] = 0;
-  		printf("%s",buf+6);
-  	} else{
-  		goto error;
-  	}
-  	if(buf[0] == 'E'){
-  		exit(1);
-  	}
-  }
-
-
+  close(fd1);//we close our request pipe
+  close(fd2);//we close our reply pipe
   return EXIT_SUCCESS;
 
  error:
