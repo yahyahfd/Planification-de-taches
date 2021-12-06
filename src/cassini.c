@@ -108,14 +108,22 @@ int main(int argc, char * argv[]) {
   // --------
   // We first open the pipe in write only mode
   int fd1,fd2;
-  fd1 = open("./run/pipes/saturnd-request-pipe", O_WRONLY);//we open our request pipe in write only mode
-  fd2 = open("./run/pipes/saturnd-reply-pipe", O_RDONLY);//we open our reply pipe in read only mode
+  char * rq_p = NULL;
+  char * rp_p = NULL;
+  rq_p = (char *) malloc((sizeof(pipes_directory)*strlen(pipes_directory)+sizeof("/saturnd-request-pipe")));
+  rp_p = (char *) malloc((sizeof(pipes_directory)*strlen(pipes_directory)+sizeof("/saturnd-reply-pipe")));
+  strcpy(rp_p,pipes_directory);
+  strcpy(rq_p,pipes_directory);
+  fd1 = open(strcat(rq_p,"/saturnd-request-pipe"), O_WRONLY);//we open our request pipe in write only mode
+  fd2 = open(strcat(rp_p,"/saturnd-reply-pipe"), O_RDONLY);//we open our reply pipe in read only mode
+  free(rq_p);
+  free(rp_p);
   if (fd1 < 0 || fd2 < 0){ //if we can't open one of the two pipes, we go to error
     goto error;
   }
   int nb; //Stores return values of reads, we don't check it because it's always > 0 since we opened fd2 in read only mode
-  char buf[1025]; //Buffer used for CLIENT_REQUEST_GET_STDOUT
-  char * buf2; //Buffer used for ls commandline's string part
+  char buf[1025] = {}; //Buffer used for CLIENT_REQUEST_GET_STDOUT
+  char * buf2 = NULL; //Buffer used for ls commandline's string part
   // Not very efficient way of using buffers, but still works
   uint64_t buffer8; //buffer for uint64_t
   uint32_t buffer4; //buffer for uint32_t
@@ -313,7 +321,7 @@ int main(int argc, char * argv[]) {
         for(int i=0; i<arg_count;i++){
           nb = read(fd2,&buffer4,4);
           uint32_t len_argv = htobe32(buffer4); //length of the current argv
-          buf2 = (char*) malloc(len_argv); //we allocate the exact size needed to store argv
+          buf2 = (char*) malloc(len_argv+1); //we allocate the exact size needed to store argv
           nb = read(fd2,buf2,len_argv);
           printf(" %s",buf2); //then we print argv
           free(buf2); //and we don't forget our free()
@@ -324,6 +332,8 @@ int main(int argc, char * argv[]) {
   }
   close(fd1);//we close our request pipe
   close(fd2);//we close our reply pipe
+  free(pipes_directory);
+  pipes_directory = NULL;
   return EXIT_SUCCESS;
 
  error:
