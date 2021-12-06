@@ -117,7 +117,7 @@ int main(int argc, char * argv[]) {
   }
   int nb;
   char buf[1025];
-  char buf2[1025];
+  char * buf2;
   uint64_t buffer8;
   uint32_t buffer4;
   uint16_t buffer2;
@@ -152,7 +152,7 @@ int main(int argc, char * argv[]) {
         write(fd1,&size_l2,sizeof(uint32_t));
         write(fd1,argv[i],size_l);
       }
-      //reply responde on stdout
+      //reply's response on stdout
       nb = read(fd2,&buffer2,2);
       nb = read(fd2,&buffer8,8);
       printf("%ld\n", be64toh(buffer8));
@@ -186,32 +186,102 @@ int main(int argc, char * argv[]) {
       uint64_t test;
       for(int i=0;i<nb_tasks;i++){
         nb = read(fd2,&buffer8,8);//task_id
-        printf("%ld: ", buffer8);
+        printf("%ld: ", htobe64(buffer8));
         nb = read(fd2,&buffer8,8);//mins
-        printf("%ld", buffer8);
+        uint64_t new_mins = htobe64(buffer8);
+        if(new_mins & (1UL << 59)){
+          printf("*");
+        }else{
+          int res_d [60] = {0};
+          int count = 0;
+          for(int i = 0;i<59;i++){
+            if(new_mins & (1UL << i)){
+              res_d[i] = 1;
+              count++;
+            }
+          }
+          for(int i=0; i<59;i++){
+            if(res_d[i]!=0){
+              printf("%d",i);
+              if(count>1){
+                printf(",");
+                count--;
+              }
+            }
+          }
+        }
+
         nb = read(fd2,&buffer4,4);//hours
-        printf(" %d ", buffer4);
+        uint32_t new_hrs = htobe32(buffer4);
+        if(new_hrs & (1UL << 23)){
+          printf(" * ");
+        }else{
+          printf(" ");
+          int res_d [24] = {0};
+          int count = 0;
+          for(int i = 0;i<23;i++){
+            if(new_hrs & (1UL << i)){
+              res_d[i] = 1;
+              count++;
+            }
+          }
+          for(int i=0; i<23;i++){
+            if(res_d[i]!=0){
+              printf("%d",i);
+              if(count>1){
+                printf(",");
+                count--;
+              }
+            }
+          }
+          printf(" ");
+        }
+
         nb = read(fd2,&buffer1,1);//days
-        printf(" %d", buffer1);
+        if(buffer1 & (1UL << 6)){
+          printf("*");
+        }else{
+          int res_d [7] = {0};
+          int count = 0;
+          for(int i = 0;i<6;i++){
+            if(buffer1 & (1UL << i)){
+              res_d[i] = 1;
+              count++;
+            }
+          }
+          for(int i=0; i<6;i++){
+            if(res_d[i]!=0){
+              printf("%d",i);
+              if(count>1){
+                printf(",");
+                count--;
+              }
+            }
+          }
+          // for "-", need aux function
+          // int pos = 0;
+          // int start = 0;
+          // int end = 0;
+          // for(int i=0;i<5;i++){
+          //   if(res_d[i]!=0 && res_d[i+1]!=0){
+          //     start=i;
+          //     end=i+1;
+          //   }
+          // }
+        }
+
         nb = read(fd2,&buffer4,4);
-        uint32_t arg_count = be32toh(buffer4); //argc
+        uint32_t arg_count = htobe32(buffer4); //argc
         for(int i=0; i<arg_count;i++){
           nb = read(fd2,&buffer4,4);
-          uint32_t len_argv = be32toh(buffer4);
+          uint32_t len_argv = htobe32(buffer4);
+          buf2 = (char*) malloc(len_argv);
           nb = read(fd2,buf2,len_argv);
           printf(" %s",buf2);
+          free(buf2);
         }
+        printf("\n");
       }
-
-      /*
-      timing: MINUTES <uint64>, HOURS <uint32>, DAYSOFWEEK <uint8>
-      commandline: ARGC <uint32>, ARGV[0] <string>, ..., ARGV[ARGC-1] <string>
-      string: uint32 length argv, argv <length>
-      REPTYPE='OK' <uint16>, NBTASKS=N <uint32>,
-      TASK[0].TASKID <uint64>, TASK[0].TIMING <timing>, TASK[0].COMMANDLINE <commandline>,
-      ...
-      TASK[N-1].TASKID <uint64>, TASK[N-1].TIMING <timing>, TASK[N-1].COMMANDLINE <commandline>
-      */
       break;
   }
   close(fd1);//we close our request pipe
