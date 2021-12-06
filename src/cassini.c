@@ -195,26 +195,26 @@ int main(int argc, char * argv[]) {
     case CLIENT_REQUEST_GET_TIMES_AND_EXITCODES:
       write(fd1,&new_opr,sizeof(uint16_t));
       write(fd1,&new_task,sizeof(uint64_t));
-      nb = read(fd2,&buffer2,2);
+      nb = read(fd2,&buffer2,2);           //Reading the response from deamon
 
-      if (htobe16(buffer2) == 20299) {
-        nb = read(fd2,&buffer4,4);
+      if (htobe16(buffer2) == 20299) {    //if its OK(20299)
+        nb = read(fd2,&buffer4,4);        //Reading how many times the task runs
         uint32_t nb_runs = htobe32(buffer4);
 
         int64_t tmp;
-        struct tm * letemps;
+        struct tm * letemps;      //Converting the time to a struct form
         for (int i = 0; i < nb_runs; i++) {
           nb = read(fd2,&buff8,8);
           tmp = htobe64(buff8);
           letemps = localtime(&tmp);
-          printf( "%04d-%02d-%02d %02d:%02d:%02d",
+          printf( "%04d-%02d-%02d %02d:%02d:%02d",      //Printing the time
           letemps->tm_year+1900, letemps->tm_mon+1, letemps->tm_mday,
           letemps->tm_hour, letemps->tm_min, letemps->tm_sec);
           nb = read(fd2,&buffer2,2);
-          printf(" %d\n", htobe16(buffer4));
+          printf(" %d\n", htobe16(buffer4));    //Printing the return value
         }
       }else{
-         goto error;
+         goto error;    //if the response is not a 'OK'
       }
 
 
