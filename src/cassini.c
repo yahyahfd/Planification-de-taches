@@ -171,24 +171,24 @@ int main(int argc, char * argv[]) {
       write(fd1,&new_opr,sizeof(uint16_t));
       break;
     case CLIENT_REQUEST_GET_STDOUT:
-      write(fd1,&new_opr,sizeof(uint16_t));
-      write(fd1,&new_task,sizeof(uint64_t));
-      if((nb = read(fd2, buf,1024)) >= 0){
-    		buf[nb] = 0;
-    		printf("%s",buf+6);
-    	} else{
-    		goto error;
+      write(fd1,&new_opr,sizeof(uint16_t)); //we write the appropriate operation 
+      write(fd1,&new_task,sizeof(uint64_t)); //then we do the same with its task
+      if((nb = read(fd2, buf,1024)) >= 0){ //we retrieve the content of the reply pipe and if the buffer nb retrieved all of it without errors
+    		buf[nb] = 0; //we close the string
+    		printf("%s",buf+6); //and we print the appropriate output
+    	} else{ 
+    		goto error; //if an error occured with the buffer
     	}
-    	if(buf[0] == 'E'){
+    	if(buf[0] == 'E'){ //If we have 'ERNR' as response instead of 'OK'
       	goto error;
     	}
       break;
     case CLIENT_REQUEST_REMOVE_TASK:
-      write(fd1,&new_opr,sizeof(uint16_t));
+      write(fd1,&new_opr,sizeof(uint16_t)); //Same as with STDOUT, the difference being there's no output to print
       write(fd1,&new_task,sizeof(uint64_t));
       break;
     case CLIENT_REQUEST_GET_STDERR:
-      write(fd1,&new_opr,sizeof(uint16_t));
+      write(fd1,&new_opr,sizeof(uint16_t)); //Same as for STDOUT
       write(fd1,&new_task,sizeof(uint64_t));
       if((nb = read(fd2, buf,1024)) >= 0){
     		buf[nb] = 0;
