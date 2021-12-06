@@ -1,10 +1,8 @@
 #ifndef CASSINI_H
 #define CASSINI_H
 
-#include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
-#include <stdio.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
