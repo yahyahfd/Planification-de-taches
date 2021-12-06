@@ -191,6 +191,12 @@ int main(int argc, char * argv[]) {
     		exit(1);
     	}
       break;
+    case CLIENT_REQUEST_GET_TIMES_AND_EXITCODES:
+      write(fd1,&new_opr,sizeof(uint16_t));
+      write(fd1,&new_task,sizeof(uint64_t));
+
+
+      break;
     default:// ls for now is default
       write(fd1,&new_opr,sizeof(uint16_t));
       break;
