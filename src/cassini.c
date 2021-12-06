@@ -112,8 +112,8 @@ int main(int argc, char * argv[]) {
   char * rp_p = NULL;
   rq_p = (char *) malloc((sizeof(pipes_directory)*strlen(pipes_directory)+sizeof("/saturnd-request-pipe")));
   rp_p = (char *) malloc((sizeof(pipes_directory)*strlen(pipes_directory)+sizeof("/saturnd-reply-pipe")));
-  strcpy(rp_p,pipes_directory);
-  strcpy(rq_p,pipes_directory);
+  strcpy(rp_p,pipes_directory); //we copy our pipes_directory into a new var
+  strcpy(rq_p,pipes_directory); //we copy our pipes_directory into a new var
   fd1 = open(strcat(rq_p,"/saturnd-request-pipe"), O_WRONLY);//we open our request pipe in write only mode
   fd2 = open(strcat(rp_p,"/saturnd-reply-pipe"), O_RDONLY);//we open our reply pipe in read only mode
   free(rq_p);
@@ -171,12 +171,12 @@ int main(int argc, char * argv[]) {
       write(fd1,&new_opr,sizeof(uint16_t));
       break;
     case CLIENT_REQUEST_GET_STDOUT:
-      write(fd1,&new_opr,sizeof(uint16_t)); //we write the appropriate operation 
+      write(fd1,&new_opr,sizeof(uint16_t)); //we write the appropriate operation
       write(fd1,&new_task,sizeof(uint64_t)); //then we do the same with its task
       if((nb = read(fd2, buf,1024)) >= 0){ //we retrieve the content of the reply pipe and if the buffer nb retrieved all of it without errors
     		buf[nb] = 0; //we close the string
     		printf("%s",buf+6); //and we print the appropriate output
-    	} else{ 
+    	} else{
     		goto error; //if an error occured with the buffer
     	}
     	if(buf[0] == 'E'){ //If we have 'ERNR' as response instead of 'OK'
