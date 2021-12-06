@@ -121,6 +121,7 @@ int main(int argc, char * argv[]) {
   uint32_t buffer4;
   uint16_t buffer2;
   uint8_t buffer1;
+  int64_t buff8;
   // we then convert our operation to big endian if needed
   uint16_t new_opr = htobe16(operation);
   uint64_t new_task = htobe64(taskid);
@@ -154,7 +155,7 @@ int main(int argc, char * argv[]) {
       //reply's response on stdout
       nb = read(fd2,&buffer2,2);
       nb = read(fd2,&buffer8,8);
-      printf("%ld\n", be64toh(buffer8));
+      printf("%ld\n", htobe64(buffer8));
       break;
     case CLIENT_REQUEST_TERMINATE://Terminate just like List takes an unsigned integer of 16 bytes previously converted to big endian
       write(fd1,&new_opr,sizeof(uint16_t));
@@ -191,11 +192,40 @@ int main(int argc, char * argv[]) {
     		exit(1);
     	}
       break;
+    case CLIENT_REQUEST_GET_TIMES_AND_EXITCODES:
+      write(fd1,&new_opr,sizeof(uint16_t));
+      write(fd1,&new_task,sizeof(uint64_t));
+      nb = read(fd2,&buffer2,2);
+
+      if (htobe16(buffer2) == 20299) {
+        nb = read(fd2,&buffer4,4);
+        uint32_t nb_runs = htobe32(buffer4);
+
+        int64_t tmp;
+        struct tm * letemps;
+        for (int i = 0; i < nb_runs; i++) {
+          nb = read(fd2,&buff8,8);
+          tmp = htobe64(buff8);
+          letemps = localtime(&tmp);
+          printf( "%04d-%02d-%02d %02d:%02d:%02d",
+          letemps->tm_year+1900, letemps->tm_mon+1, letemps->tm_mday,
+          letemps->tm_hour, letemps->tm_min, letemps->tm_sec);
+          nb = read(fd2,&buffer2,2);
+          printf(" %d\n", htobe16(buffer4));
+        }
+      }else{
+         goto error;
+      }
+
+
+
+
+      break;
     default:// ls for now is default
       write(fd1,&new_opr,sizeof(uint16_t));
       nb = read(fd2,&buffer2,2);
       nb = read(fd2,&buffer4,4);
-      uint32_t nb_tasks = be32toh(buffer4); //NBTASKS
+      uint32_t nb_tasks = htobe32(buffer4); //NBTASKS
       uint64_t test;
       for(int i=0;i<nb_tasks;i++){
         nb = read(fd2,&buffer8,8);//task_id
