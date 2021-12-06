@@ -111,8 +111,6 @@ int main(int argc, char * argv[]) {
   fd1 = open("./run/pipes/saturnd-request-pipe", O_WRONLY);//we open our request pipe in write only mode
   fd2 = open("./run/pipes/saturnd-reply-pipe", O_RDONLY);//we open our reply pipe in read only mode
   if (fd1 < 0 || fd2 < 0){ //if we can't open one of the two pipes, we go to error
-    close(fd1);
-    close(fd2);
     goto error;
   }
   int nb; //Stores return values of reads, we don't check it because it's always > 0 since we opened fd2 in read only mode
@@ -171,11 +169,10 @@ int main(int argc, char * argv[]) {
     		buf[nb] = 0;
     		printf("%s",buf+6);
     	} else{
-        close(fd2);
     		goto error;
     	}
     	if(buf[0] == 'E'){
-    		exit(1);
+      	goto error;
     	}
       break;
     case CLIENT_REQUEST_REMOVE_TASK:
@@ -189,11 +186,10 @@ int main(int argc, char * argv[]) {
     		buf[nb] = 0;
     		printf("%s",buf+6);
     	} else{
-        close(fd2);
     		goto error;
     	}
     	if(buf[0] == 'E'){
-    		exit(1);
+    		goto error;
     	}
       break;
     case CLIENT_REQUEST_GET_TIMES_AND_EXITCODES:
@@ -331,6 +327,8 @@ int main(int argc, char * argv[]) {
   return EXIT_SUCCESS;
 
  error:
+  close(fd1);
+  close(fd2);
   if (errno != 0) perror("main");
   free(pipes_directory);
   pipes_directory = NULL;
