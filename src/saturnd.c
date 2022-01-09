@@ -1,4 +1,5 @@
-
+#include <stdio.h>
+#include <inttypes.h>
 
 int main(int argc, char const *argv[]) {
 
@@ -24,6 +25,7 @@ int main(int argc, char const *argv[]) {
   boolean success;
 
   uint16_t new_rsp = (success)?htobe16(SERVER_REPLY_OK):htobe16(SERVER_REPLY_ERROR);
+  uint16_t err_code = htobe16(NF) // ou htobe16(NR)
 
   switch (operation) {
     case CLIENT_REQUEST_CREATE_TASK:
@@ -31,6 +33,18 @@ int main(int argc, char const *argv[]) {
     case CLIENT_REQUEST_TERMINATE:
       break;
     case CLIENT_REQUEST_GET_STDOUT:
+      int replen = read(fd2,&taskid,8);
+      if(replen == 8){
+        success = true; //we set success to true for new_rsp
+        char buf_stdout[256];
+        snprintf(buf_stdout,sizeof(buf_stdout), "%"PRIu64, &taskid); //we convert the taskid from uint64 to string
+        write(fd1,&new_rsp,sizeof(uint16_t)); //we send OK and then the converted taskid
+        write(fd1,&buf_stdout,sizeof(buf_stdout));
+      }else{
+        success = false;
+        write(fd1,&new_rsp,sizeof(uint16_t));
+        write(fd1,&err_code,sizeof(uint16_t));
+      }
       break;
     case CLIENT_REQUEST_REMOVE_TASK:
       break;
@@ -39,7 +53,7 @@ int main(int argc, char const *argv[]) {
       break;
     case CLIENT_REQUEST_GET_TIMES_AND_EXITCODES:
       break;
-    case
+  
   }
   return 0;
   error:
