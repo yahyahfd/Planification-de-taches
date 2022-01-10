@@ -115,7 +115,7 @@ int main(int argc, char * argv[]) {
   strcpy(rp_p,pipes_directory); //we copy our pipes_directory into a new var
   strcpy(rq_p,pipes_directory); //we copy our pipes_directory into a new var
   fd1 = open(strcat(rq_p,"/saturnd-request-pipe"), O_WRONLY);//we open our request pipe in write only mode
-  fd2 = open(strcat(rp_p,"/saturnd-reply-pipe"), O_RDONLY);//we open our reply pipe in read only mode
+  fd2 = open(strcat(rp_p,"/saturnd-reply-pipe"), O_RDONLY | O_NONBLOCK);//we open our reply pipe in read only mode
   free(rq_p);
   free(rp_p);
   if (fd1 < 0 || fd2 < 0){ //if we can't open one of the two pipes, we go to error
