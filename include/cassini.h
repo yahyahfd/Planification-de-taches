@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <poll.h>
-
+#include <inttypes.h>
 #include "client-request.h"
 #include "server-reply.h"
 #include "timing-text-io.h"

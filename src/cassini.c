@@ -170,10 +170,13 @@ int main(int argc, char * argv[]) {
       if(pfd[0].revents & (POLLIN|POLLHUP)) {	//there is something to read
         //reply's response on stdout
         nb = read(fd2,&buffer2,2); //we skip the two first bytes
-        nb = read(fd2,&buffer8,8); //task_id of the new task
-        printf("%ld\n", htobe64(buffer8)); //we print this task_id
+        nb = read(fd2,&buffer8,8);
+        char buf_stdout[64];
+        memset(buf_stdout, 0x00, 64);
+        sprintf(buf_stdout, "%"PRIu64, htobe64(buffer8));
+        printf("%s",buf_stdout);//we print this task_id
       }
-      break;
+      break;//5713660552249606144
     case CLIENT_REQUEST_TERMINATE://Terminate just like List takes an unsigned integer of 16 bytes previously converted to big endian
       write(fd1,&new_opr,sizeof(uint16_t));
       break;
@@ -340,6 +343,7 @@ int main(int argc, char * argv[]) {
             uint32_t len_argv = htobe32(buffer4); //length of the current argv
             buf2 = (char*) malloc(len_argv+1); //we allocate the exact size needed to store argv
             nb = read(fd2,buf2,len_argv);
+            buf2[len_argv] = '\0';
             printf(" %s",buf2); //then we print argv
             free(buf2); //and we don't forget our free()
           }
