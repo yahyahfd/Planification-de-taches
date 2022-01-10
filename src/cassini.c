@@ -115,12 +115,16 @@ int main(int argc, char * argv[]) {
   strcpy(rp_p,pipes_directory); //we copy our pipes_directory into a new var
   strcpy(rq_p,pipes_directory); //we copy our pipes_directory into a new var
   fd1 = open(strcat(rq_p,"/saturnd-request-pipe"), O_WRONLY);//we open our request pipe in write only mode
-  fd2 = open(strcat(rp_p,"/saturnd-reply-pipe"), O_RDONLY);//we open our reply pipe in read only mode
+  fd2 = open(strcat(rp_p,"/saturnd-reply-pipe"), O_RDONLY | O_NONBLOCK);//we open our reply pipe in read only mode
   free(rq_p);
   free(rp_p);
   if (fd1 < 0 || fd2 < 0){ //if we can't open one of the two pipes, we go to error
     goto error;
   }
+  struct pollfd pfd[2];
+  pfd[0].fd = fd2;
+  pfd[0].events = POLLIN;
+
   int nb; //Stores return values of reads, we don't check it because it's always > 0 since we opened fd2 in read only mode
   char buf[1025] = {}; //Buffer used for CLIENT_REQUEST_GET_STDOUT
   char * buf2 = NULL; //Buffer used for ls commandline's string part
@@ -162,10 +166,13 @@ int main(int argc, char * argv[]) {
         write(fd1,&size_l2,sizeof(uint32_t)); //we write the size of the current argv
         write(fd1,argv[i],size_l); //then we write the current argv
       }
-      //reply's response on stdout
-      nb = read(fd2,&buffer2,2); //we skip the two first bytes
-      nb = read(fd2,&buffer8,8); //task_id of the new task
-      printf("%ld\n", htobe64(buffer8)); //we print this task_id
+      poll(pfd,1,-1);
+      if(pfd[0].revents & (POLLIN|POLLHUP)) {	//there is something to read
+        //reply's response on stdout
+        nb = read(fd2,&buffer2,2); //we skip the two first bytes
+        nb = read(fd2,&buffer8,8); //task_id of the new task
+        printf("%ld\n", htobe64(buffer8)); //we print this task_id
+      }
       break;
     case CLIENT_REQUEST_TERMINATE://Terminate just like List takes an unsigned integer of 16 bytes previously converted to big endian
       write(fd1,&new_opr,sizeof(uint16_t));
@@ -173,15 +180,18 @@ int main(int argc, char * argv[]) {
     case CLIENT_REQUEST_GET_STDOUT:
       write(fd1,&new_opr,sizeof(uint16_t)); //we write the appropriate operation
       write(fd1,&new_task,sizeof(uint64_t)); //then we do the same with its task
-      if((nb = read(fd2, buf,1024)) >= 0){ //we retrieve the content of the reply pipe and if the buffer nb retrieved all of it without errors
-    		buf[nb] = 0; //we close the string
-    		printf("%s",buf+6); //and we print the appropriate output
-    	} else{
-    		goto error; //if an error occured with the buffer
-    	}
-    	if(buf[0] == 'E'){ //If we have 'ERNR' as response instead of 'OK'
-      	goto error;
-    	}
+      poll(pfd,1,-1);
+      if(pfd[0].revents & (POLLIN|POLLHUP)) {	//there is something to read
+        if((nb = read(fd2, buf,1024)) >= 0){ //we retrieve the content of the reply pipe and if the buffer nb retrieved all of it without errors
+          buf[nb] = 0; //we close the string
+          printf("%s",buf+6); //and we print the appropriate output
+        } else{
+          goto error; //if an error occured with the buffer
+        }
+        if(buf[0] == 'E'){ //If we have 'ERNR' as response instead of 'OK'
+          goto error;
+        }
+      }
       break;
     case CLIENT_REQUEST_REMOVE_TASK:
       write(fd1,&new_opr,sizeof(uint16_t)); //Same as with STDOUT, the difference being there's no output to print
@@ -190,143 +200,151 @@ int main(int argc, char * argv[]) {
     case CLIENT_REQUEST_GET_STDERR:
       write(fd1,&new_opr,sizeof(uint16_t)); //Same as for STDOUT
       write(fd1,&new_task,sizeof(uint64_t));
-      if((nb = read(fd2, buf,1024)) >= 0){
-    		buf[nb] = 0;
-    		printf("%s",buf+6);
-    	} else{
-    		goto error;
-    	}
-    	if(buf[0] == 'E'){
-    		goto error;
-    	}
+      poll(pfd,1,-1);
+      if(pfd[0].revents & (POLLIN|POLLHUP)) {	//there is something to read
+        if((nb = read(fd2, buf,1024)) >= 0){
+          buf[nb] = 0;
+          printf("%s",buf+6);
+        } else{
+          goto error;
+        }
+        if(buf[0] == 'E'){
+          goto error;
+        }
+      }
       break;
     case CLIENT_REQUEST_GET_TIMES_AND_EXITCODES:
       write(fd1,&new_opr,sizeof(uint16_t));
       write(fd1,&new_task,sizeof(uint64_t));
-      nb = read(fd2,&buffer2,2);           //Reading the response from deamon
+      poll(pfd,1,-1);
+      if(pfd[0].revents & (POLLIN|POLLHUP)) {	//there is something to read
+        nb = read(fd2,&buffer2,2);           //Reading the response from deamon
+        if (htobe16(buffer2) == 20299) {    //if its OK(20299)
+          nb = read(fd2,&buffer4,4);        //Reading how many times the task runs
+          uint32_t nb_runs = htobe32(buffer4);
 
-      if (htobe16(buffer2) == 20299) {    //if its OK(20299)
-        nb = read(fd2,&buffer4,4);        //Reading how many times the task runs
-        uint32_t nb_runs = htobe32(buffer4);
-
-        int64_t tmp;
-        struct tm * letemps;      //Converting the time to a struct form
-        for (int i = 0; i < nb_runs; i++) {
-          nb = read(fd2,&buff8,8);
-          tmp = htobe64(buff8);
-          letemps = localtime(&tmp);
-          printf( "%04d-%02d-%02d %02d:%02d:%02d",      //Printing the time
-          letemps->tm_year+1900, letemps->tm_mon+1, letemps->tm_mday,
-          letemps->tm_hour, letemps->tm_min, letemps->tm_sec);
-          nb = read(fd2,&buffer2,2);
-          printf(" %d\n", htobe16(buffer4));    //Printing the return value
+          int64_t tmp;
+          struct tm * letemps;      //Converting the time to a struct form
+          for (int i = 0; i < nb_runs; i++) {
+            nb = read(fd2,&buff8,8);
+            tmp = htobe64(buff8);
+            letemps = localtime(&tmp);
+            printf( "%04d-%02d-%02d %02d:%02d:%02d",      //Printing the time
+            letemps->tm_year+1900, letemps->tm_mon+1, letemps->tm_mday,
+            letemps->tm_hour, letemps->tm_min, letemps->tm_sec);
+            nb = read(fd2,&buffer2,2);
+            printf(" %d\n", htobe16(buffer4));    //Printing the return value
+          }
+        }else{
+          goto error;    //if the response is not a 'OK'
         }
-      }else{
-         goto error;    //if the response is not a 'OK'
       }
       break;
     default: // "-l" option or ls is default
       write(fd1,&new_opr,sizeof(uint16_t)); //we write this operation
-      nb = read(fd2,&buffer2,2); //we skip two bytes
-      nb = read(fd2,&buffer4,4);
-      uint32_t nb_tasks = htobe32(buffer4); //NBTASKS
-      for(int i=0;i<nb_tasks;i++){
-        nb = read(fd2,&buffer8,8);//task_id
-        printf("%ld: ", htobe64(buffer8));
-        nb = read(fd2,&buffer8,8);//mins
-        uint64_t new_mins = htobe64(buffer8);
-        if(new_mins & (1UL << 59)){ //if there is one more bit than needed, that means mins is undefined
-          printf("*");
-        }else{
-          int res_d [60] = {0};
-          int count = 0;
-          for(int i = 0;i<59;i++){ //we store bits that are equal to one in res_d, and increment count each time there is one
-            if(new_mins & (1UL << i)){
-              res_d[i] = 1;
-              count++;
-            }
-          }
-          for(int i=0; i<59;i++){ //we print our results the way needed
-            if(res_d[i]!=0){
-              printf("%d",i);
-              if(count>1){
-                printf(",");
-                count--;
-              }
-            }
-          }
-        }
-
-        nb = read(fd2,&buffer4,4);//hours
-        uint32_t new_hrs = htobe32(buffer4);
-        if(new_hrs & (1UL << 23)){  //if there is one more bit than needed, that means hours is undefined
-          printf(" * ");
-        }else{
-          printf(" ");
-          int res_d [24] = {0};
-          int count = 0;
-          for(int i = 0;i<23;i++){ //we store bits that are equal to one in res_d, and increment count each time there is one
-            if(new_hrs & (1UL << i)){
-              res_d[i] = 1;
-              count++;
-            }
-          }
-          for(int i=0; i<23;i++){ //we print our results the way needed
-            if(res_d[i]!=0){
-              printf("%d",i);
-              if(count>1){
-                printf(",");
-                count--;
-              }
-            }
-          }
-          printf(" ");
-        }
-
-        nb = read(fd2,&buffer1,1);//days
-        if(buffer1 & (1UL << 6)){ //if there is one more bit than needed, that means days is undefined
-          printf("*");
-        }else{
-          int res_d [7] = {0};
-          int count = 0;
-          for(int i = 0;i<6;i++){ //we store bits that are equal to one in res_d, and increment count each time there is one
-            if(buffer1 & (1UL << i)){
-              res_d[i] = 1;
-              count++;
-            }
-          }
-          for(int i=0; i<6;i++){ //we print our results the way needed
-            if(res_d[i]!=0){
-              printf("%d",i);
-              if(count>1){
-                printf(",");
-                count--;
-              }
-            }
-          }
-          // for "-", need aux function -> not taken into account in the tests
-          // int pos = 0;
-          // int start = 0;
-          // int end = 0;
-          // for(int i=0;i<5;i++){
-          //   if(res_d[i]!=0 && res_d[i+1]!=0){
-          //     start=i;
-          //     end=i+1;
-          //   }
-          // }
-        }
-
+      poll(pfd,1,-1);
+      if(pfd[0].revents & (POLLIN|POLLHUP)) {	//there is something to read
+        nb = read(fd2,&buffer2,2); //we skip two bytes
         nb = read(fd2,&buffer4,4);
-        uint32_t arg_count = htobe32(buffer4); //the argc of commands inside commandline
-        for(int i=0; i<arg_count;i++){
+        uint32_t nb_tasks = htobe32(buffer4); //NBTASKS
+        for(int i=0;i<nb_tasks;i++){
+          nb = read(fd2,&buffer8,8);//task_id
+          printf("%ld: ", htobe64(buffer8));
+          nb = read(fd2,&buffer8,8);//mins
+          uint64_t new_mins = htobe64(buffer8);
+          if(new_mins & (1UL << 59)){ //if there is one more bit than needed, that means mins is undefined
+            printf("*");
+          }else{
+            int res_d [60] = {0};
+            int count = 0;
+            for(int i = 0;i<59;i++){ //we store bits that are equal to one in res_d, and increment count each time there is one
+              if(new_mins & (1UL << i)){
+                res_d[i] = 1;
+                count++;
+              }
+            }
+            for(int i=0; i<59;i++){ //we print our results the way needed
+              if(res_d[i]!=0){
+                printf("%d",i);
+                if(count>1){
+                  printf(",");
+                  count--;
+                }
+              }
+            }
+          }
+
+          nb = read(fd2,&buffer4,4);//hours
+          uint32_t new_hrs = htobe32(buffer4);
+          if(new_hrs & (1UL << 23)){  //if there is one more bit than needed, that means hours is undefined
+            printf(" * ");
+          }else{
+            printf(" ");
+            int res_d [24] = {0};
+            int count = 0;
+            for(int i = 0;i<23;i++){ //we store bits that are equal to one in res_d, and increment count each time there is one
+              if(new_hrs & (1UL << i)){
+                res_d[i] = 1;
+                count++;
+              }
+            }
+            for(int i=0; i<23;i++){ //we print our results the way needed
+              if(res_d[i]!=0){
+                printf("%d",i);
+                if(count>1){
+                  printf(",");
+                  count--;
+                }
+              }
+            }
+            printf(" ");
+          }
+
+          nb = read(fd2,&buffer1,1);//days
+          if(buffer1 & (1UL << 6)){ //if there is one more bit than needed, that means days is undefined
+            printf("*");
+          }else{
+            int res_d [7] = {0};
+            int count = 0;
+            for(int i = 0;i<6;i++){ //we store bits that are equal to one in res_d, and increment count each time there is one
+              if(buffer1 & (1UL << i)){
+                res_d[i] = 1;
+                count++;
+              }
+            }
+            for(int i=0; i<6;i++){ //we print our results the way needed
+              if(res_d[i]!=0){
+                printf("%d",i);
+                if(count>1){
+                  printf(",");
+                  count--;
+                }
+              }
+            }
+            // for "-", need aux function -> not taken into account in the tests
+            // int pos = 0;
+            // int start = 0;
+            // int end = 0;
+            // for(int i=0;i<5;i++){
+            //   if(res_d[i]!=0 && res_d[i+1]!=0){
+            //     start=i;
+            //     end=i+1;
+            //   }
+            // }
+          }
+
           nb = read(fd2,&buffer4,4);
-          uint32_t len_argv = htobe32(buffer4); //length of the current argv
-          buf2 = (char*) malloc(len_argv+1); //we allocate the exact size needed to store argv
-          nb = read(fd2,buf2,len_argv);
-          printf(" %s",buf2); //then we print argv
-          free(buf2); //and we don't forget our free()
+          uint32_t arg_count = htobe32(buffer4); //the argc of commands inside commandline
+          for(int i=0; i<arg_count;i++){
+            nb = read(fd2,&buffer4,4);
+            uint32_t len_argv = htobe32(buffer4); //length of the current argv
+            buf2 = (char*) malloc(len_argv+1); //we allocate the exact size needed to store argv
+            nb = read(fd2,buf2,len_argv);
+            printf(" %s",buf2); //then we print argv
+            free(buf2); //and we don't forget our free()
+          }
+          printf("\n");
         }
-        printf("\n");
       }
       break;
   }
