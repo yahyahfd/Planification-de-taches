@@ -25,7 +25,7 @@ int main(int argc, char * argv[]) {
     uint16_t buffer2; //buffer for uint16_t
     uint8_t buffer1; //buffer for uint8_t
     // int64_t buff8;  //buffer for int64_t
-    char taskiderrorbuf[64];
+    char taskidbuf[64];
     char taskerrorbuf[1024];
 
     uint16_t ok = SERVER_REPLY_OK;
@@ -41,6 +41,7 @@ int main(int argc, char * argv[]) {
     uint64_t taskID = 0;
     uint64_t new_taskID;
     int tasks_errors_fd ;
+    int tasks_stdout_fd;
     switch(operation){
         case CLIENT_REQUEST_CREATE_TASK:
         {
@@ -76,11 +77,10 @@ int main(int argc, char * argv[]) {
         }
         case CLIENT_REQUEST_GET_STDERR:
             read(fd2,&taskID,sizeof(uint64_t)); // recuperation du task_id
-            // snprintf(taskiderrorbuf,sizeof(taskiderrorbuf),"%"PRIu64,&taskid);
-            memset(taskiderrorbuf, 0x00, 64);
-            sprintf(taskiderrorbuf, "%"PRIu64, htobe64(taskID));
-            strcat("/tasks/",taskiderrorbuf);
-            tasks_errors_fd = open(strcat(taskiderrorbuf,"/task_errors.txt"),O_RDONLY);
+            memset(taskidbuf, 0x00, 64);
+            sprintf(taskidbuf, "%"PRIu64, htobe64(taskID));
+            strcat("/tasks/",taskidbuf);
+            tasks_errors_fd = open(strcat(taskidbuf,"/task_errors.txt"),O_RDONLY);
             if (tasks_errors_fd<0) {
               //error task not found
               write(fd2,&error,sizeof(uint16_t));
@@ -97,6 +97,22 @@ int main(int argc, char * argv[]) {
             write(fd2,&ok,sizeof(uint16_t));
             write(fd2,&taskerrorbuf,sizeof(taskerrorbuf));
             close(tasks_errors_fd);
+            break;
+        case CLIENT_REQUEST_GET_TIMES_AND_EXITCODES:
+            read(fd2,&taskID,sizeof(uint64_t));
+            memset(taskidbuf, 0x00, 64);
+            sprintf(taskidbuf, "%"PRIu64, htobe64(taskID));
+            strcat("/tasks/",taskidbuf);
+            tasks_stdout_fd = open(strcat(taskidbuf,"/task_stdout.txt"),O_RDONLY);
+            if (tasks_stdout_fd<0) {
+              //error task not found
+              write(fd2,&error,sizeof(uint16_t));
+              write(fd2,&not_found,sizeof(uint16_t));
+              close(tasks_stdout_fd);
+              break;
+            }
+            //Read the task text file to get time and return value
+            close(tasks_stdout_fd);
             break;
         case CLIENT_REQUEST_TERMINATE:
             write(fd2,&ok,2);
