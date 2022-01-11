@@ -1,4 +1,22 @@
 #include "cassini.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+
+int err_type_for_stdout(char* task){
+	FILE *fd = fopen("/tasks.txt", "r");
+	bool ret = false;
+	char buffer[256];
+	while(fgets(buffer,256,fd) != NULL){
+		if(strcmp(buffer,task) == 0){
+			ret = true;
+			break;
+		}
+		memset(buffer,0,sizeof(buffer));
+	}
+	return ret;
+}
 
 int main(int argc, char * argv[]) {
     int fd1,fd2;
@@ -74,6 +92,31 @@ int main(int argc, char * argv[]) {
             write(fd2,&new_taskID,8);
             break;
         }
+        case CLIENT_REQUEST_GET_STDOUT:
+     		read(fd2,&buffer2,8);
+     		read(fd2,&new_taskID,sizeof(uint64_t));
+        	char buf_oid[256];
+        	snprintf(buf_oid,sizeof(buf_oid), "%"PRIu64, new_taskID); //we convert the taskid from uint64 to string
+        	if(err_type_for_stdout(buf_oid)){
+        		write(fd1,&ok,sizeof(uint16_t)); //we send OK and then the converted taskid
+        		write(fd1,&buf_oid,sizeof(buf_oid));
+     		}else{
+        		write(fd1,&error,sizeof(uint16_t));
+        		write(fd1,&not_found,sizeof(uint16_t));
+      		}
+      		break;
+    	case CLIENT_REQUEST_REMOVE_TASK:
+      		read(fd2,&buffer2,8);
+      		read(fd2,&new_taskID,sizeof(uint64_t));
+      		char buf_rid[256];
+        	snprintf(buf_rid,sizeof(buf_rid), "%"PRIu64, new_taskID);
+      		if(err_type_for_stdout(buf_rid)){
+        		write(fd1,&ok,sizeof(uint16_t)); //we send OK 
+      		}else{
+        		write(fd1,&error,sizeof(uint16_t));
+        		write(fd1,&not_found,sizeof(uint16_t));
+      		}
+      		break;
         case CLIENT_REQUEST_GET_STDERR:
             read(fd2,&taskID,sizeof(uint64_t)); // recuperation du task_id
             // snprintf(taskiderrorbuf,sizeof(taskiderrorbuf),"%"PRIu64,&taskid);
