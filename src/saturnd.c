@@ -1,5 +1,6 @@
 #include "cassini.h"
 
+static uint64_t taskID = 0;
 int main(int argc, char * argv[]) {
     int fd1,fd2;
     // char * rq_p = NULL;
@@ -14,37 +15,65 @@ int main(int argc, char * argv[]) {
     // free(rq_p);
     // free(rp_p);
     fd1 = open("./run/pipes/saturnd-request-pipe", O_RDONLY);//we open our request pipe in read only mode
-    fd2 = open("./run/pipes/saturnd-request-pipe", O_WRONLY);//we open our reply pipe in write only mode
+    fd2 = open("./run/pipes/saturnd-reply-pipe", O_WRONLY);//we open our reply pipe in write only mode
     if (fd1 < 0 || fd2 < 0){ //if we can't open one of the two pipes, we go to error
         goto error;
     }
+// rq write fd1
+// rp read nb fd2
+    uint64_t buffer8; //buffer for uint64_t
+    uint32_t buffer4; //buffer for uint32_t
+    uint16_t buffer2; //buffer for uint16_t
+    uint8_t buffer1; //buffer for uint8_t
+    // int64_t buff8;  //buffer for int64_t
 
-    // uint64_t taskid;
-    uint16_t buffer;
-    read(fd1,&buffer,2);
-    uint16_t operation = htobe16(buffer); 
-    struct timing t;
-    int tasks_fd = open("tasks.txt", O_WRONLY |O_CREAT | O_APPEND);
+    read(fd1,&buffer2,2);
+    uint16_t operation = htobe16(buffer2);
+    char spacebuf = '\n';
+    int tasks_fd,tasks_res_fd;
+    tasks_fd = open("tasks.txt", O_RDWR |O_CREAT |O_APPEND , 0600);
+    tasks_res_fd = open("tasks_res.txt", O_RDWR  | O_CREAT|O_APPEND, 0600);
     switch(operation){
         case CLIENT_REQUEST_CREATE_TASK:
-            read(fd2,&t.minutes,sizeof(uint64_t));
-            read(fd2,&t.hours,sizeof(uint32_t));
-            read(fd2,&t.daysofweek,sizeof(uint8_t));
-
-            if(tasks_fd<0) goto error;
-            write(tasks_fd,&t.minutes,sizeof(uint64_t));
-            write(tasks_fd,&t.hours,sizeof(uint32_t));
-            write(tasks_fd,&t.daysofweek,sizeof(uint8_t));
-            char spacebuf = '\n';
+        {   
+            if(tasks_fd<0 || tasks_res_fd < 0) goto error;
+            taskID++;
+            uint64_t new_taskID = taskID;
+            write(tasks_fd, &new_taskID,8);
+            read(fd1,&buffer8,8); //minutes
+            read(fd1,&buffer4,4); //hours
+            read(fd1,&buffer1,1); //days
+            write(tasks_fd,&buffer8,8);
+            write(tasks_fd,&buffer4,4);
+            write(tasks_fd,&buffer1,1);
+            read(fd1,&buffer4,4); //ARGC
+            uint32_t new_argc = htobe32(buffer4);
+            write(tasks_fd,&buffer4,sizeof(uint32_t));
+            for(int i = 0;i<new_argc;i++){
+                read(fd1,&buffer4,4);//string: length + string
+                write(tasks_fd,&buffer4,sizeof(uint32_t));
+            }
             write(tasks_fd,&spacebuf,1);
+            write(tasks_res_fd,&new_taskID,sizeof(uint64_t));
+            uint32_t sizel = htobe32(0);
+            write(tasks_res_fd,&sizel,sizeof(uint32_t));
+            char tmp;
+            write(tasks_res_fd,&tmp,sizel);
+            uint16_t tmp2 = (uint16_t) 0;
+            write(tasks_res_fd,&tmp2,sizeof(uint16_t));
+            write(tasks_res_fd,&spacebuf,1);
+            uint16_t ok = SERVER_REPLY_OK;
+            write(fd2,&ok,2);
+            write(fd2,&new_taskID,8);
             break;
+        }
         case CLIENT_REQUEST_TERMINATE:
             kill(getpid(),SIGKILL);
             break;
         default:
+            
             goto error;
     }
-    
 
     // close(tasks_fd);
     close(fd1);//we close our request pipe
