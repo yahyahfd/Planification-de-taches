@@ -1,4 +1,4 @@
-#include "../include/cassini.h"
+#include "cassini.h"
 
 const char usage_info[] = "\
    usage: cassini [OPTIONS] -l -> list all tasks\n\
