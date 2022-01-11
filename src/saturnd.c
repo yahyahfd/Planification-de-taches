@@ -25,8 +25,13 @@ int main(int argc, char * argv[]) {
     uint16_t buffer2; //buffer for uint16_t
     uint8_t buffer1; //buffer for uint8_t
     // int64_t buff8;  //buffer for int64_t
+    char taskiderrorbuf[64];
+    char taskerrorbuf[1024];
 
     uint16_t ok = SERVER_REPLY_OK;
+    uint16_t not_found = SERVER_REPLY_ERROR_NOT_FOUND;
+    uint16_t never_run = SERVER_REPLY_ERROR_NEVER_RUN;
+    uint16_t error = SERVER_REPLY_ERROR;
     read(fd1,&buffer2,2);
     uint16_t operation = htobe16(buffer2);
     char spacebuf = '\n';
@@ -35,11 +40,12 @@ int main(int argc, char * argv[]) {
     tasks_res_fd = open("tasks_res.txt", O_RDWR  | O_CREAT|O_APPEND, 0600);
     uint64_t taskID = 0;
     uint64_t new_taskID;
+    int tasks_errors_fd ;
     switch(operation){
         case CLIENT_REQUEST_CREATE_TASK:
-        {   
+        {
             if(tasks_fd<0 || tasks_res_fd < 0) goto error;
-            
+
             new_taskID = taskID;
             write(tasks_fd, &new_taskID,8);
             read(fd1,&buffer8,8); //minutes
@@ -68,6 +74,30 @@ int main(int argc, char * argv[]) {
             write(fd2,&new_taskID,8);
             break;
         }
+        case CLIENT_REQUEST_GET_STDERR:
+            read(fd2,&taskID,sizeof(uint64_t)); // recuperation du task_id
+            // snprintf(taskiderrorbuf,sizeof(taskiderrorbuf),"%"PRIu64,&taskid);
+            memset(taskiderrorbuf, 0x00, 64);
+            sprintf(taskiderrorbuf, "%"PRIu64, htobe64(taskID));
+            strcat("/tasks/",taskiderrorbuf);
+            tasks_errors_fd = open(strcat(taskiderrorbuf,"/task_errors.txt"),O_RDONLY);
+            if (tasks_errors_fd<0) {
+              //error task not found
+              write(fd2,&error,sizeof(uint16_t));
+              write(fd2,&not_found,sizeof(uint16_t));
+              close(tasks_errors_fd);
+              break;
+            }
+            if (read(tasks_errors_fd,&taskerrorbuf,sizeof(taskerrorbuf))<=0) {
+              write(fd2,&error,sizeof(uint16_t));
+              write(fd2,&never_run,sizeof(uint16_t));
+              close(tasks_errors_fd);
+              break;
+            }
+            write(fd2,&ok,sizeof(uint16_t));
+            write(fd2,&taskerrorbuf,sizeof(taskerrorbuf));
+            close(tasks_errors_fd);
+            break;
         case CLIENT_REQUEST_TERMINATE:
             write(fd2,&ok,2);
             kill(getpid(),SIGKILL);
@@ -102,7 +132,7 @@ int main(int argc, char * argv[]) {
     close(fd1);//we close our request pipe
     close(fd2);//we close our reply pipe
     return EXIT_SUCCESS;
-    error: 
+    error:
         close(tasks_fd);
         close(tasks_res_fd);
         close(fd1);
