@@ -26,7 +26,7 @@ int main(int argc, char * argv[]) {
     uint8_t buffer1; //buffer for uint8_t
     // int64_t buff8;  //buffer for int64_t
     char taskidbuf[64];
-    char taskerrorbuf[1024];
+    char taskerrorbuf[1024]; //buffer for standard error output
 
     uint16_t ok = SERVER_REPLY_OK;
     uint16_t not_found = SERVER_REPLY_ERROR_NOT_FOUND;
@@ -40,8 +40,8 @@ int main(int argc, char * argv[]) {
     tasks_res_fd = open("tasks_res.txt", O_RDWR  | O_CREAT|O_APPEND, 0600);
     uint64_t taskID = 0;
     uint64_t new_taskID;
-    int tasks_errors_fd ;
-    int tasks_stdout_fd;
+    int tasks_errors_fd ; //descriptor for error text file of task
+    int tasks_stdout_fd; //descriptor for stdout text file of task
     switch(operation){
         case CLIENT_REQUEST_CREATE_TASK:
         {
@@ -76,11 +76,11 @@ int main(int argc, char * argv[]) {
             break;
         }
         case CLIENT_REQUEST_GET_STDERR:
-            read(fd2,&taskID,sizeof(uint64_t)); // recuperation du task_id
+            read(fd2,&taskID,sizeof(uint64_t)); // reading the taskid
             memset(taskidbuf, 0x00, 64);
-            sprintf(taskidbuf, "%"PRIu64, htobe64(taskID));
+            sprintf(taskidbuf, "%"PRIu64, htobe64(taskID)); //converting taskid to string
             strcat("/tasks/",taskidbuf);
-            tasks_errors_fd = open(strcat(taskidbuf,"/task_errors.txt"),O_RDONLY);
+            tasks_errors_fd = open(strcat(taskidbuf,"/task_errors.txt"),O_RDONLY); //open the error text file of the specific task
             if (tasks_errors_fd<0) {
               //error task not found
               write(fd2,&error,sizeof(uint16_t));
@@ -88,18 +88,18 @@ int main(int argc, char * argv[]) {
               close(tasks_errors_fd);
               break;
             }
-            if (read(tasks_errors_fd,&taskerrorbuf,sizeof(taskerrorbuf))<=0) {
+            if (read(tasks_errors_fd,&taskerrorbuf,sizeof(taskerrorbuf))<=0) { //error task never run
               write(fd2,&error,sizeof(uint16_t));
               write(fd2,&never_run,sizeof(uint16_t));
               close(tasks_errors_fd);
               break;
             }
-            write(fd2,&ok,sizeof(uint16_t));
+            write(fd2,&ok,sizeof(uint16_t)); //all good we return ok and the error string
             write(fd2,&taskerrorbuf,sizeof(taskerrorbuf));
             close(tasks_errors_fd);
             break;
         case CLIENT_REQUEST_GET_TIMES_AND_EXITCODES:
-            read(fd2,&taskID,sizeof(uint64_t));
+            read(fd2,&taskID,sizeof(uint64_t)); //reading the task id
             memset(taskidbuf, 0x00, 64);
             sprintf(taskidbuf, "%"PRIu64, htobe64(taskID));
             strcat("/tasks/",taskidbuf);
