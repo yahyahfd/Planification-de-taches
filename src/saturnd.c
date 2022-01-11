@@ -1,8 +1,4 @@
 #include "cassini.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
 
 int err_type_for_stdout(char* task){
 	FILE *fd = fopen("/tasks.txt", "r");
@@ -20,24 +16,21 @@ int err_type_for_stdout(char* task){
 
 int main(int argc, char * argv[]) {
     int fd1,fd2;
-    // char * rq_p = NULL;
-    // char * rp_p = NULL;
-    // char * pipes_directory = argv[1];
-    // rq_p = (char *) malloc((sizeof(pipes_directory)*strlen(pipes_directory)+sizeof("/saturnd-request-pipe")));
-    // rp_p = (char *) malloc((sizeof(pipes_directory)*strlen(pipes_directory)+sizeof("/saturnd-reply-pipe")));
-    // strcpy(rp_p,pipes_directory); //we copy our pipes_directory into a new var
-    // strcpy(rq_p,pipes_directory); //we copy our pipes_directory into a new var
-    // fd1 = open(strcat(rq_p,"/saturnd-request-pipe"), O_RDONLY);//we open our request pipe in read only mode
-    // fd2 = open(strcat(rp_p,"/saturnd-reply-pipe"), O_WRONLY);//we open our reply pipe in write only mode
-    // free(rq_p);
-    // free(rp_p);
-    fd1 = open("./run/pipes/saturnd-request-pipe", O_RDONLY);//we open our request pipe in read only mode
-    fd2 = open("./run/pipes/saturnd-reply-pipe", O_WRONLY);//we open our reply pipe in write only mode
+    char * rq_p = NULL;
+    char * rp_p = NULL;
+    char * pipes_directory = argv[1];
+    rq_p = (char *) malloc((sizeof(pipes_directory)*strlen(pipes_directory)+sizeof("/saturnd-request-pipe")));
+    rp_p = (char *) malloc((sizeof(pipes_directory)*strlen(pipes_directory)+sizeof("/saturnd-reply-pipe")));
+    strcpy(rp_p,pipes_directory); //we copy our pipes_directory into a new var
+    strcpy(rq_p,pipes_directory); //we copy our pipes_directory into a new var
+    fd1 = open(strcat(rq_p,"/saturnd-request-pipe"), O_RDONLY);//we open our request pipe in read only mode
+    fd2 = open(strcat(rp_p,"/saturnd-reply-pipe"), O_WRONLY);//we open our reply pipe in write only mode
+    free(rq_p);
+    free(rp_p);
     if (fd1 < 0 || fd2 < 0){ //if we can't open one of the two pipes, we go to error
         goto error;
     }
-// rq write fd1
-// rp read nb fd2
+    
     uint64_t buffer8; //buffer for uint64_t
     uint32_t buffer4; //buffer for uint32_t
     uint16_t buffer2; //buffer for uint16_t

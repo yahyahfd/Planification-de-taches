@@ -14,6 +14,7 @@
 #include "client-request.h"
 #include "server-reply.h"
 #include <signal.h>
+#include <stdbool.h>
 #include "timing-text-io.h"
 
 #endif // CASSINI
