@@ -76,7 +76,7 @@ int main(int argc, char * argv[]) {
             write(fd2,&ok,2);
             write(fd2,&new_taskID,8);
             int nb;
-            while((nb = read(tasks_fd,&buffer8,8))>0){
+            while((nb = read(tasks_fd,&buffer8,8))>0 ){
                 write(fd2,&buffer8,8);
                 read(tasks_fd,&buffer8,8);
                 write(fd2,&buffer8,8);
@@ -87,6 +87,8 @@ int main(int argc, char * argv[]) {
                 read(tasks_fd,&buffer4,4);
                 write(fd2,&buffer4,4);
                 uint32_t new_arg = htobe32(buffer4);
+                printf("%d",new_arg);
+                wait(10);
                 for(int i = 0; new_arg; i++){
                     read(tasks_fd,&buffer4,4);
                     write(fd2,&buffer4,4);
@@ -97,11 +99,14 @@ int main(int argc, char * argv[]) {
             goto error;
     }
 
-    // close(tasks_fd);
+    close(tasks_fd);
+    close(tasks_res_fd);
     close(fd1);//we close our request pipe
     close(fd2);//we close our reply pipe
     return EXIT_SUCCESS;
-    error:
+    error: 
+        close(tasks_fd);
+        close(tasks_res_fd);
         close(fd1);
         close(fd2);
         return EXIT_FAILURE;
