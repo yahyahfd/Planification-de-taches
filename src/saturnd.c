@@ -87,8 +87,6 @@ int main(int argc, char * argv[]) {
                 read(tasks_fd,&buffer4,4);
                 write(fd2,&buffer4,4);
                 uint32_t new_arg = htobe32(buffer4);
-                printf("%d",new_arg);
-                wait(10);
                 for(int i = 0; new_arg; i++){
                     read(tasks_fd,&buffer4,4);
                     write(fd2,&buffer4,4);
