@@ -1,6 +1,5 @@
 #include "cassini.h"
 
-static uint64_t taskID = 0;
 int main(int argc, char * argv[]) {
     int fd1,fd2;
     // char * rq_p = NULL;
@@ -27,18 +26,21 @@ int main(int argc, char * argv[]) {
     uint8_t buffer1; //buffer for uint8_t
     // int64_t buff8;  //buffer for int64_t
 
+    uint16_t ok = SERVER_REPLY_OK;
     read(fd1,&buffer2,2);
     uint16_t operation = htobe16(buffer2);
     char spacebuf = '\n';
     int tasks_fd,tasks_res_fd;
     tasks_fd = open("tasks.txt", O_RDWR |O_CREAT |O_APPEND , 0600);
     tasks_res_fd = open("tasks_res.txt", O_RDWR  | O_CREAT|O_APPEND, 0600);
+    uint64_t taskID = 0;
+    uint64_t new_taskID;
     switch(operation){
         case CLIENT_REQUEST_CREATE_TASK:
         {   
             if(tasks_fd<0 || tasks_res_fd < 0) goto error;
-            taskID++;
-            uint64_t new_taskID = taskID;
+            
+            new_taskID = taskID;
             write(tasks_fd, &new_taskID,8);
             read(fd1,&buffer8,8); //minutes
             read(fd1,&buffer4,4); //hours
@@ -62,16 +64,36 @@ int main(int argc, char * argv[]) {
             uint16_t tmp2 = (uint16_t) 0;
             write(tasks_res_fd,&tmp2,sizeof(uint16_t));
             write(tasks_res_fd,&spacebuf,1);
-            uint16_t ok = SERVER_REPLY_OK;
             write(fd2,&ok,2);
             write(fd2,&new_taskID,8);
             break;
         }
         case CLIENT_REQUEST_TERMINATE:
+            write(fd2,&ok,2);
             kill(getpid(),SIGKILL);
             break;
         default:
-            
+            write(fd2,&ok,2);
+            write(fd2,&new_taskID,8);
+            int nb;
+            while((nb = read(tasks_fd,&buffer8,8))>0){
+                write(fd2,&buffer8,8);
+                read(tasks_fd,&buffer8,8);
+                write(fd2,&buffer8,8);
+                read(tasks_fd,&buffer4,4);
+                write(fd2,&buffer4,4);
+                read(tasks_fd,&buffer1,1);
+                write(fd2,&buffer1,1);
+                read(tasks_fd,&buffer4,4);
+                write(fd2,&buffer4,4);
+                uint32_t new_arg = htobe32(buffer4);
+                for(int i = 0; new_arg; i++){
+                    read(tasks_fd,&buffer4,4);
+                    write(fd2,&buffer4,4);
+                }
+                char tmp;
+                read(tasks_fd,&tmp,1);
+            }
             goto error;
     }
 
