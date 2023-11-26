@@ -1,5 +1,7 @@
 # SY5-projet-2021-2022
 
+Projet à améliorer et compléter
+
 Le projet du cours de systèmes d'exploitation (L3), 2021-2022
 
 Ce dépôt contient :
@@ -12,7 +14,3 @@ Ce dépôt contient :
     le jeu de [tests](tests) correspondant, 
 
   - quelques fichiers sources pour vous aider à démarrer.
-
-Par ailleurs, nous avons ouvert un [serveur
-discord](https://discord.gg/7ArJtu8Xnv) avec un salon dédié aux questions concernant le projet.
-
