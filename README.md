@@ -1,4 +1,4 @@
-# SY5-projet-2021-2022
+# Planification de taches
 
 Projet à améliorer et compléter
 
